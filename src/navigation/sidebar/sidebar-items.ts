@@ -79,9 +79,10 @@ export const sidebarItems: NavGroup[] = [
         url: "/menu-management",
         icon: SquareMenu,
         subItems: [
-          { title: "Menu", url: "/menu-management/items" },
+          { title: "Menu", url: "/menu-management/menu" },
           { title: "Categories", url: "/menu-management/categories" },
           { title: "Pricing & Availability", url: "/menu-management/add-ons" },
+          { title: "Recipes", url: "/menu-management/recipes" },
         ],
       },
       {
@@ -97,7 +98,7 @@ export const sidebarItems: NavGroup[] = [
           { title: "System Preferences", url: "/admin-settings/system-preference" },
           { title: "Backup & Restore", url: "/admin-settings/backup-restore" },
           { title: "System Logs", url: "/admin-settings/system-logs" },
-        ]
+        ],
       },
       // {
       //   title: "Analytics",
@@ -170,7 +171,7 @@ export const sidebarItems: NavGroup[] = [
   //       url: "/auth",
   //       icon: Fingerprint,
   //       subItems: [
-  //         { title: "Login v1", url: "/dashboard/coming-soon", newTab: false },
+  //         { title: "Login v1", url: "/auth/v1/login", newTab: false },
   //         { title: "Login v2", url: "/auth/v2/login", newTab: true },
   //         { title: "Register v1", url: "/auth/v1/register", newTab: true },
   //         { title: "Register v2", url: "/auth/v2/register", newTab: true },

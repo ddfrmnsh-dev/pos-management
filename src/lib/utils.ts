@@ -40,3 +40,8 @@ export function formatCurrency(
 
   return new Intl.NumberFormat(locale, formatOptions).format(amount);
 }
+
+export function can(permissions: string[] | undefined, required: string) {
+  if (!permissions) return false;
+  return permissions.includes(required);
+}
