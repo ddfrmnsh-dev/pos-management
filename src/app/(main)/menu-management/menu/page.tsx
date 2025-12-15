@@ -1,17 +1,31 @@
 "use client";
-import { useState } from "react";
-
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-
-import { Badge, Pencil, Plus, RotateCcw, Search, Trash } from "lucide-react";
-
+import { ArrowUpDown, Pencil, Plus, RotateCcw, Search, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
+import { DeleteConfirmDialog } from "../_components/sidebar/dialog-confirm-delete";
+import { toast } from "sonner";
+import Image from "next/image";
+import { MenuImage } from "@/components/ui/menu-image";
 
-const menus = [
+type Menu = {
+  id: number
+  name: string
+  category: string
+  price: number
+  status: "active" | "inactive"
+  availability: string
+  seasonal: boolean
+  image: string
+}
+
+
+const initMenu: Menu[] = [
   {
     id: 1,
     name: "Classic Burger",
@@ -20,7 +34,7 @@ const menus = [
     status: "active",
     availability: "All Branches",
     seasonal: false,
-    image: "/images/burger.jpg",
+    image: "/images/menu/burger.jpeg",
   },
   {
     id: 2,
@@ -30,13 +44,61 @@ const menus = [
     status: "inactive",
     availability: "Branch A",
     seasonal: true,
-    image: "/images/cake.jpg",
+    image: "/images/menu/choco-lava.jpeg",
+  },
+  {
+    id: 3,
+    name: "Classic Burger",
+    category: "Main Course",
+    price: 12.99,
+    status: "active",
+    availability: "All Branches",
+    seasonal: false,
+    image: "/images/menu/burger.jpeg",
+  },
+  {
+    id: 4,
+    name: "Chocolate Lava Cake",
+    category: "Dessert",
+    price: 6.5,
+    status: "inactive",
+    availability: "Branch A",
+    seasonal: true,
+    image: "/images/menu/choco-lava.jpeg",
+  },
+  {
+    id: 5,
+    name: "Classic Burger",
+    category: "Main Course",
+    price: 12.99,
+    status: "active",
+    availability: "All Branches",
+    seasonal: false,
+    image: "/images/menu/burger.jpeg",
+  },
+  {
+    id: 6,
+    name: "Chocolate Lava Cake",
+    category: "Dessert",
+    price: 6.5,
+    status: "inactive",
+    availability: "Branch A",
+    seasonal: true,
+    image: "/images/menu/choco-lava.jpeg",
   },
 ];
 
 export default function Page() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
+  const [page, setPage] = useState(1)
+  const pageSize = 10
+  const [sortBy, setSortBy] = useState<{
+    key: keyof Menu | null
+    direction: "asc" | "desc"
+  }>({ key: null, direction: "asc" })
+  const [menus, setMenus] = useState<Menu[]>(initMenu)
+  const [isDeleting, setIsDeleting] = useState<number | null>(null)
 
   const filteredMenus = menus.filter((menu) => {
     const keyword = search.toLowerCase();
@@ -49,8 +111,9 @@ export default function Page() {
   });
 
   const handleReset = () => {
-    setSearch("");
-    setCategory("all");
+    setSearch("")
+    setCategory("all")
+    setPage(1)
   };
 
   const router = useRouter();
@@ -62,6 +125,83 @@ export default function Page() {
     router.replace(`?tab=${value}`);
   };
 
+  const handleSort = (key: keyof Menu) => {
+    setSortBy((prev) => ({
+      key,
+      direction:
+        prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }))
+  }
+
+  const SortIcon = ({ column }: { column: keyof Menu }) => {
+    const isActive = sortBy.key === column
+
+    return (
+      <ArrowUpDown
+        className={cn(
+          "h-3 w-3 transition-transform",
+          isActive ? "text-foreground" : "text-muted-foreground",
+          isActive && sortBy.direction === "desc" && "rotate-180"
+        )}
+      />
+    )
+  }
+
+  const sortedMenus = useMemo(() => {
+    if (!sortBy.key) return filteredMenus
+
+    return [...filteredMenus].sort((a, b) => {
+      const aVal = a[sortBy.key!]
+      const bVal = b[sortBy.key!]
+
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return sortBy.direction === "asc" ? aVal - bVal : bVal - aVal
+      }
+
+
+      return sortBy.direction === "asc"
+        ? String(aVal).localeCompare(String(bVal))
+        : String(bVal).localeCompare(String(aVal))
+    })
+  }, [filteredMenus, sortBy])
+
+
+  const totalPages = Math.ceil(sortedMenus.length / pageSize)
+
+  const paginatedMenus = useMemo(() => {
+    const start = (page - 1) * pageSize
+    return sortedMenus.slice(start, start + pageSize)
+  }, [sortedMenus, page])
+
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1)
+
+  const handleDelete = async (id: number) => {
+    const previousMenus = menus
+
+    // OPTIMISTIC UPDATE
+    setMenus((prev) => prev.filter((m) => m.id !== id))
+    setIsDeleting(id)
+
+    try {
+      // SIMULASI API
+      await new Promise((res) => setTimeout(res, 800))
+      // await api.delete(`/menus/${id}`)
+
+      toast.success("Menu deleted")
+    } catch (error) {
+      // ROLLBACK
+      setMenus(previousMenus)
+
+      toast.error("Delete failed")
+    } finally {
+      setIsDeleting(null)
+    }
+  }
+
+  useEffect(() => {
+    setPage(1)
+  }, [search, category, sortBy])
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -70,7 +210,7 @@ export default function Page() {
           <p className="text-muted-foreground text-sm">Manage your restaurant menu items</p>
         </div>
 
-        <Button>
+        <Button onClick={() => router.push("/menu-management/menu/add")}>
           <Plus className="mr-2 h-4 w-4" />
           Add Menu Item
         </Button>
@@ -129,49 +269,165 @@ export default function Page() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Menu Name</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Availability</TableHead>
-                  <TableHead>Seasonal</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort("name")}
+                  >
+                    <div className="flex items-center gap-1">
+                      Menu Name
+                      <SortIcon column="name" />
+                    </div>
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort("category")}
+                  >
+                    <div className="flex items-center gap-1">
+                      Category
+                      <SortIcon column="category" />
+                    </div>
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort("price")}
+                  >
+                    <div className="flex items-center gap-1">
+                      Price
+                      <SortIcon column="price" />
+                    </div>
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort("status")}
+                  >
+                    <div className="flex items-center gap-1">
+                      Status
+                      <SortIcon column="status" />
+                    </div>
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort("availability")}
+                  >
+                    <div className="flex items-center gap-1">
+                      Availability
+                      <SortIcon column="availability" />
+                    </div>
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort("seasonal")}
+                  >
+                    <div className="flex items-center gap-1">
+                      Seasonal
+                      <SortIcon column="seasonal" />
+                    </div>
+                  </TableHead>
+                  <TableHead className="flex items-center gap-1">Actions</TableHead>
                 </TableRow>
               </TableHeader>
 
               <TableBody>
-                {filteredMenus.map((menu) => (
+                {paginatedMenus.map((menu) => (
                   <TableRow key={menu.id} className="hover:bg-muted/50">
                     <TableCell className="flex items-center gap-2">
-                      <img src={menu.image} alt={menu.name} className="h-6 w-6 rounded object-cover" />
+                      {/* <img src={menu.image} alt={menu.name} className="h-6 w-6 rounded object-cover" /> */}
+                      {/* <Image
+                        src={menu.image}
+                        alt={menu.name}
+                        width={24}
+                        height={24}
+                        className="rounded object-cover"
+                      /> */}
+                      <MenuImage
+                        src={menu.image}
+                        alt={menu.name}
+                        size="sm"
+                        rounded="md"
+                      />
                       {menu.name}
                     </TableCell>
                     <TableCell>{menu.category}</TableCell>
-                    <TableCell className="text-right">${menu.price.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">Rp {menu.price.toFixed(2)}</TableCell>
                     <TableCell>
-                      <Badge
-                      // variant={menu.status === "active" ? "default" : "secondary"}
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
+                          menu.status === "active"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-gray-100 text-gray-700"
+                        )}
                       >
                         {menu.status}
-                      </Badge>
+                      </span>
                     </TableCell>
                     <TableCell>
-                      <Badge>{menu.availability}</Badge>
-                      {/* <Badge variant="outline">{menu.availability}</Badge> */}
+                      <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                        {menu.availability}
+                      </span>
                     </TableCell>
                     <TableCell>{menu.seasonal ? "Yes" : "No"}</TableCell>
-                    <TableCell className="space-x-2 text-right">
+                    <TableCell className="flex items-center gap-1">
                       <Button size="icon" variant="ghost">
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="ghost">
+                      {/* <Button size="icon" variant="ghost">
                         <Trash className="h-4 w-4 text-red-500" />
-                      </Button>
+                      </Button> */}
+                      <DeleteConfirmDialog
+                        title="Delete menu item?"
+                        description={`This will permanently delete ${menu.name}.`}
+                        loading={isDeleting === menu.id}
+                        onConfirm={() => handleDelete(menu.id)}
+                      >
+                        <Button size="icon" variant="ghost">
+                          <Trash className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </DeleteConfirmDialog>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
+          </div>
+          <div className="flex items-center justify-between pt-4">
+            <p className="text-sm text-muted-foreground">
+              Page {page} of {totalPages}
+            </p>
+
+            <div className="flex items-center gap-1">
+              {/* Previous */}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                Previous
+              </Button>
+
+              {/* Page Numbers */}
+              {pages.map((p) => (
+                <Button
+                  key={p}
+                  size="sm"
+                  variant={p === page ? "default" : "outline"}
+                  onClick={() => setPage(p)}
+                >
+                  {p}
+                </Button>
+              ))}
+
+              {/* Next */}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </Button>
+            </div>
           </div>
         </TabsContent>
       </Tabs>
