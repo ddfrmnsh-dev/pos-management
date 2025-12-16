@@ -341,12 +341,13 @@ export default function Page() {
                     </TableCell>
                     <TableCell>{menu.seasonal ? "Yes" : "No"}</TableCell>
                     <TableCell className="flex items-center gap-1">
-                      <Button size="icon" variant="ghost">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => router.push(`/menu-management/menu/${menu.id}/edit`)}
+                      >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      {/* <Button size="icon" variant="ghost">
-                        <Trash className="h-4 w-4 text-red-500" />
-                      </Button> */}
                       <DeleteConfirmDialog
                         title="Delete menu item?"
                         description={`This will permanently delete ${menu.name}.`}
