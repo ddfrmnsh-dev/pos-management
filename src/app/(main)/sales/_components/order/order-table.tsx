@@ -1,3 +1,5 @@
+import { useRouter } from "next/navigation";
+
 import { ArrowUpDown, ChevronRight } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 type Order = {
   id: string;
+  trxNumber: string;
   customer: string;
   type: string;
   total: string;
@@ -16,6 +19,7 @@ type Order = {
 };
 
 export function OrderTable({ orders }: { orders: Order[] }) {
+  const router = useRouter();
   return (
     <div className="relative w-full overflow-x-auto rounded-lg border">
       <Table className="min-w-[900px]">
@@ -35,7 +39,7 @@ export function OrderTable({ orders }: { orders: Order[] }) {
         <TableBody>
           {orders.map((o) => (
             <TableRow key={o.id}>
-              <TableCell>{o.id}</TableCell>
+              <TableCell>{o.trxNumber}</TableCell>
               <TableCell>{o.customer}</TableCell>
               <TableCell className="hidden md:table-cell">{o.type}</TableCell>
               <TableCell>{o.total}</TableCell>
@@ -51,7 +55,9 @@ export function OrderTable({ orders }: { orders: Order[] }) {
               </TableCell>
 
               <TableCell>
-                <Button size="sm">View</Button>
+                <Button size="sm" onClick={() => router.push(`/sales/order-history/${o.id}`)}>
+                  View
+                </Button>
               </TableCell>
             </TableRow>
           ))}

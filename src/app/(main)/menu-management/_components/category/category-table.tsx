@@ -60,7 +60,14 @@ export function CategoryTable() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Manage Categories</h2>
-
+        <Button
+          onClick={() => {
+            setSelectedCategory(undefined); // mode CREATE
+            setOpen(true);
+          }}
+        >
+          + Add Category
+        </Button>
         <CategoryModal open={open} onOpenChange={setOpen} category={selectedCategory} />
       </div>
 

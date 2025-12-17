@@ -9,6 +9,7 @@ import { OrderTable } from "../_components/order/order-table";
 
 type Order = {
   id: string;
+  trxNumber: string;
   customer: string;
   type: string;
   total: string;
@@ -19,7 +20,8 @@ type Order = {
 };
 const orders: Order[] = [
   {
-    id: "#ORD78903",
+    id: "ORD78903",
+    trxNumber: "#ORD78903",
     customer: "Sarah Johnson",
     type: "Delivery",
     total: "$35.96",
@@ -29,7 +31,8 @@ const orders: Order[] = [
     branch: "Jakarta",
   },
   {
-    id: "#ORD78908",
+    id: "ORD78908",
+    trxNumber: "#ORD78908",
     customer: "Thomas Brown",
     type: "Takeout",
     total: "$36.97",
@@ -39,7 +42,8 @@ const orders: Order[] = [
     branch: "San Francisco Branch",
   },
   {
-    id: "#ORD78901",
+    id: "ORD78901",
+    trxNumber: "#ORD78901",
     customer: "Emma Thompson",
     type: "Table 12",
     total: "$42.96",
