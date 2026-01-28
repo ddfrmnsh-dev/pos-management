@@ -12,7 +12,7 @@ import { MenuImage } from "@/components/ui/menu-image";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 import { DeleteConfirmDialog } from "../_components/sidebar/dialog-confirm-delete";
 
@@ -27,68 +27,68 @@ type Menu = {
   image: string;
 };
 
-const initMenu: Menu[] = [
-  {
-    id: 1,
-    name: "Classic Burger",
-    category: "Main Course",
-    price: 12.99,
-    status: "active",
-    availability: "All Branches",
-    seasonal: false,
-    image: "/images/menu/burger.jpeg",
-  },
-  {
-    id: 2,
-    name: "Chocolate Lava Cake",
-    category: "Dessert",
-    price: 6.5,
-    status: "inactive",
-    availability: "Branch A",
-    seasonal: true,
-    image: "/images/menu/choco-lava.jpeg",
-  },
-  {
-    id: 3,
-    name: "Classic Burger",
-    category: "Main Course",
-    price: 12.99,
-    status: "active",
-    availability: "All Branches",
-    seasonal: false,
-    image: "/images/menu/burger.jpeg",
-  },
-  {
-    id: 4,
-    name: "Chocolate Lava Cake",
-    category: "Dessert",
-    price: 6.5,
-    status: "inactive",
-    availability: "Branch A",
-    seasonal: true,
-    image: "/images/menu/choco-lava.jpeg",
-  },
-  {
-    id: 5,
-    name: "Classic Burger",
-    category: "Main Course",
-    price: 12.99,
-    status: "active",
-    availability: "All Branches",
-    seasonal: false,
-    image: "/images/menu/burger.jpeg",
-  },
-  {
-    id: 6,
-    name: "Chocolate Lava Cake",
-    category: "Dessert",
-    price: 6.5,
-    status: "inactive",
-    availability: "Branch A",
-    seasonal: true,
-    image: "/images/menu/choco-lava.jpeg",
-  },
-];
+// const initMenu: Menu[] = [
+//   {
+//     id: 1,
+//     name: "Classic Burger",
+//     category: "Main Course",
+//     price: 12.99,
+//     status: "active",
+//     availability: "All Branches",
+//     seasonal: false,
+//     image: "/images/menu/burger.jpeg",
+//   },
+//   {
+//     id: 2,
+//     name: "Chocolate Lava Cake",
+//     category: "Dessert",
+//     price: 6.5,
+//     status: "inactive",
+//     availability: "Branch A",
+//     seasonal: true,
+//     image: "/images/menu/choco-lava.jpeg",
+//   },
+//   {
+//     id: 3,
+//     name: "Classic Burger",
+//     category: "Main Course",
+//     price: 12.99,
+//     status: "active",
+//     availability: "All Branches",
+//     seasonal: false,
+//     image: "/images/menu/burger.jpeg",
+//   },
+//   {
+//     id: 4,
+//     name: "Chocolate Lava Cake",
+//     category: "Dessert",
+//     price: 6.5,
+//     status: "inactive",
+//     availability: "Branch A",
+//     seasonal: true,
+//     image: "/images/menu/choco-lava.jpeg",
+//   },
+//   {
+//     id: 5,
+//     name: "Classic Burger",
+//     category: "Main Course",
+//     price: 12.99,
+//     status: "active",
+//     availability: "All Branches",
+//     seasonal: false,
+//     image: "/images/menu/burger.jpeg",
+//   },
+//   {
+//     id: 6,
+//     name: "Chocolate Lava Cake",
+//     category: "Dessert",
+//     price: 6.5,
+//     status: "inactive",
+//     availability: "Branch A",
+//     seasonal: true,
+//     image: "/images/menu/choco-lava.jpeg",
+//   },
+// ];
 
 type SortIconProps<T> = {
   column: keyof T;
@@ -119,7 +119,9 @@ export default function Page() {
     key: keyof Menu | null;
     direction: "asc" | "desc";
   }>({ key: null, direction: "asc" });
-  const [menus, setMenus] = useState<Menu[]>(initMenu);
+  const [menus, setMenus] = useState<Menu[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
 
   const filteredMenus = menus.filter((menu) => {
@@ -208,6 +210,61 @@ export default function Page() {
     setPage(1);
   }, [search, category, sortBy]);
 
+  useEffect(() => {
+    const fetchMenus = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const res = await fetch("/api/products", { method: "GET" }); // atau /api/menus
+
+        if (!res.ok) {
+          const j = await res.json().catch(() => null);
+          setError(j?.error ?? "Gagal ambil data product");
+          return;
+        }
+
+        const j = await res.json();
+
+        // backend biasanya: { data: [...] }
+        // const items: Menu[] = j?.data ?? j;
+
+        console.log("menu item from backend:", j.data.data);
+        // const items: Menu[] = (j?.data ?? j).map((x: any) => ({
+        //   id: x.id,
+        //   name: x.name,
+        //   category: x.category,
+        //   price: x.price,
+        //   status: x.status, // atau x.is_active ? "active" : "inactive"
+        //   availability: x.availability,
+        //   seasonal: x.seasonal,
+        //   image: x.image_url, // contoh mapping
+        // }));
+
+        const rawItems = j.data.data;
+
+        const items: Menu[] = rawItems.map((x: any) => ({
+          id: Number(x.id),
+          name: x.name,
+          category: x.category.name,
+          price: Number(x.base_price ?? 0),
+          status: x.status,
+          availability: x.availability ?? "-",
+          seasonal: Boolean(x.seasonal),
+          image: x.image_url,
+        }));
+
+        setMenus(items);
+      } catch (e: any) {
+        setError(e?.message ?? "Network error");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMenus();
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -269,7 +326,8 @@ export default function Page() {
               Reset
             </Button>
           </div>
-
+          {loading && <p className="text-muted-foreground text-sm">Loading...</p>}
+          {error && <p className="text-sm text-red-500">{error}</p>}
           {/* -------- TABLE -------- */}
           <div className="rounded-lg border">
             <Table>
@@ -323,7 +381,7 @@ export default function Page() {
                       {menu.name}
                     </TableCell>
                     <TableCell>{menu.category}</TableCell>
-                    <TableCell className="text-right">Rp {menu.price.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(menu.price)}</TableCell>
                     <TableCell>
                       <span
                         className={cn(
