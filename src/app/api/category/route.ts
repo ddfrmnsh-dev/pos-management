@@ -13,7 +13,7 @@ export async function GET(req: Request) {
   const access = jar.get(ACCESS_COOKIE)?.value;
 
   const r = await backendFetch(
-    `/api/products?q=${encodeURIComponent(q ?? "")}&page=${encodeURIComponent(page ?? "1")}`,
+    `/api/categories?q=${encodeURIComponent(q ?? "")}&page=${encodeURIComponent(page ?? "1")}`,
     {
       headers: access ? { Authorization: `Bearer ${access}` } : {},
     },
@@ -36,14 +36,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
   }
 
-  // ⬇️ PENTING: pakai formData
-  const formData = await req.formData();
-  const r = await backendFetch("/api/products", {
+  const body = await req.json();
+  const r = await backendFetch("/api/categories", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${access}`,
     },
-    body: formData,
+    body: body,
   });
 
   if (!r.ok) {

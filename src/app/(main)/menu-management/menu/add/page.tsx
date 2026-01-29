@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, Save, X, ImagesIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -51,39 +52,27 @@ export default function AddMenuPage() {
     },
   });
 
-  // const onSubmit = async (values: MenuFormValues) => {
-  //   console.log("SUBMIT:", values);
-
-  //   // TODO: call API
-  //   // await api.post("/menus", values)
-
-  //   router.push("/menu-management/menu");
-  // };
-
   const onSubmit = async (values: MenuFormValues) => {
     setSubmitting(true);
     setError(null);
 
     try {
-      // mapping payload -> FormData
       const fd = new FormData();
       fd.append("name", values.name);
-      fd.append("sku", "SKU0014");
-      fd.append("base_price", String(values.price)); // int
-      fd.append("cost_price", String(values.price)); // int
+      fd.append("base_price", String(values.price));
+      fd.append("cost_price", String(values.price));
       fd.append("description", values.description);
       fd.append("category_id", "1");
       fd.append("status", values.status);
-      fd.append("availability", "Availability");
+      fd.append("availability", values.availability);
       fd.append("is_seasonal", values.seasonal ? "true" : "false");
       fd.append("is_taxable", values.seasonal ? "true" : "false");
 
-      if (imageFile) fd.append("image", imageFile); // field name "image" sesuaikan backend
+      if (imageFile) fd.append("image", imageFile);
 
       const res = await fetch("/api/products", {
         method: "POST",
         body: fd,
-        // JANGAN set Content-Type manual untuk FormData
       });
 
       if (!res.ok) {
@@ -92,10 +81,15 @@ export default function AddMenuPage() {
         return;
       }
 
-      router.replace("/menu-management/menu?tab=list");
+      toast.success("Menu created successfully");
+
+      setTimeout(() => {
+        router.replace("/menu-management/menu?tab=list");
+      }, 2000);
+
       router.refresh();
     } catch (e: any) {
-      setError(e?.message ?? "Network error");
+      toast.error(e?.message ?? "Network error");
     } finally {
       setSubmitting(false);
     }
@@ -198,21 +192,6 @@ export default function AddMenuPage() {
                     </FormItem>
                   )}
                 />
-
-                {/* Image
-                <div className="space-y-1">
-                  <Label>Image</Label>
-                  <label className="hover:bg-muted mt-2 flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed p-6 text-center">
-                    <ImagesIcon className="text-muted-foreground h-5 w-5" />
-                    <span className="text-muted-foreground text-sm">Click to upload image</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-                    />
-                  </label>
-                </div> */}
 
                 <div className="space-y-1">
                   <Label>Image</Label>
@@ -345,12 +324,6 @@ export default function AddMenuPage() {
         {/* ================= ACTIONS ================= */}
         <div className="flex justify-between pt-6">
           <div className="flex gap-4">
-            {/* <Button type="submit">
-              <Save className="mr-2 h-4 w-4" />
-              Save Menu
-            </Button> */}
-            {error && <p className="text-sm text-red-500">{error}</p>}
-
             <Button type="submit" disabled={submitting}>
               <Save className="mr-2 h-4 w-4" />
               {submitting ? "Saving..." : "Save Menu"}

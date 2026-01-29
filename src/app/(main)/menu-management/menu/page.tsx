@@ -27,69 +27,6 @@ type Menu = {
   image: string;
 };
 
-// const initMenu: Menu[] = [
-//   {
-//     id: 1,
-//     name: "Classic Burger",
-//     category: "Main Course",
-//     price: 12.99,
-//     status: "active",
-//     availability: "All Branches",
-//     seasonal: false,
-//     image: "/images/menu/burger.jpeg",
-//   },
-//   {
-//     id: 2,
-//     name: "Chocolate Lava Cake",
-//     category: "Dessert",
-//     price: 6.5,
-//     status: "inactive",
-//     availability: "Branch A",
-//     seasonal: true,
-//     image: "/images/menu/choco-lava.jpeg",
-//   },
-//   {
-//     id: 3,
-//     name: "Classic Burger",
-//     category: "Main Course",
-//     price: 12.99,
-//     status: "active",
-//     availability: "All Branches",
-//     seasonal: false,
-//     image: "/images/menu/burger.jpeg",
-//   },
-//   {
-//     id: 4,
-//     name: "Chocolate Lava Cake",
-//     category: "Dessert",
-//     price: 6.5,
-//     status: "inactive",
-//     availability: "Branch A",
-//     seasonal: true,
-//     image: "/images/menu/choco-lava.jpeg",
-//   },
-//   {
-//     id: 5,
-//     name: "Classic Burger",
-//     category: "Main Course",
-//     price: 12.99,
-//     status: "active",
-//     availability: "All Branches",
-//     seasonal: false,
-//     image: "/images/menu/burger.jpeg",
-//   },
-//   {
-//     id: 6,
-//     name: "Chocolate Lava Cake",
-//     category: "Dessert",
-//     price: 6.5,
-//     status: "inactive",
-//     availability: "Branch A",
-//     seasonal: true,
-//     image: "/images/menu/choco-lava.jpeg",
-//   },
-// ];
-
 type SortIconProps<T> = {
   column: keyof T;
   sortKey: keyof T | null;
@@ -191,13 +128,20 @@ export default function Page() {
 
     try {
       // SIMULASI API
-      await new Promise((res) => setTimeout(res, 800));
+      // await new Promise((res) => setTimeout(res, 800));
       // await api.delete(`/menus/${id}`)
+
+      const res = await fetch(`/api/products/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        throw new Error("Delete failed");
+      }
 
       toast.success("Menu deleted");
     } catch (error) {
       // ROLLBACK
-      console.error("Delete failed:", error);
       setMenus(previousMenus);
 
       toast.error("Delete failed");
@@ -225,21 +169,6 @@ export default function Page() {
         }
 
         const j = await res.json();
-
-        // backend biasanya: { data: [...] }
-        // const items: Menu[] = j?.data ?? j;
-
-        console.log("menu item from backend:", j.data.data);
-        // const items: Menu[] = (j?.data ?? j).map((x: any) => ({
-        //   id: x.id,
-        //   name: x.name,
-        //   category: x.category,
-        //   price: x.price,
-        //   status: x.status, // atau x.is_active ? "active" : "inactive"
-        //   availability: x.availability,
-        //   seasonal: x.seasonal,
-        //   image: x.image_url, // contoh mapping
-        // }));
 
         const rawItems = j.data.data;
 
