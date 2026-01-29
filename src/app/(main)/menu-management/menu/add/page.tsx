@@ -33,9 +33,7 @@ type MenuFormValues = {
 
 export default function AddMenuPage() {
   const router = useRouter();
-
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -54,11 +52,11 @@ export default function AddMenuPage() {
 
   const onSubmit = async (values: MenuFormValues) => {
     setSubmitting(true);
-    setError(null);
 
     try {
       const fd = new FormData();
       fd.append("name", values.name);
+      fd.append("sku", "dummy-sku");
       fd.append("base_price", String(values.price));
       fd.append("cost_price", String(values.price));
       fd.append("description", values.description);
@@ -77,7 +75,7 @@ export default function AddMenuPage() {
 
       if (!res.ok) {
         const j = await res.json().catch(() => null);
-        setError(j?.error ?? "Gagal membuat menu");
+        toast.error(j?.error ?? "Failed to create menu");
         return;
       }
 
@@ -90,7 +88,6 @@ export default function AddMenuPage() {
       router.refresh();
     } catch (e: any) {
       toast.error(e?.message ?? "Network error");
-    } finally {
       setSubmitting(false);
     }
   };
