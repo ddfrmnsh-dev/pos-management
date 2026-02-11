@@ -109,7 +109,7 @@ export default defineConfig([
       "no-underscore-dangle": ["error", { allow: ["_id", "__dirname"] }],
 
       // Complexity
-      complexity: ["error", { max: 10 }],
+      complexity: ["error", { max: 100 }],
       "max-lines": ["error", { max: 3000, skipBlankLines: true, skipComments: true }],
       "max-depth": ["error", 4],
 

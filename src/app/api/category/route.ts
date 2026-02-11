@@ -13,7 +13,7 @@ export async function GET(req: Request) {
   const access = jar.get(ACCESS_COOKIE)?.value;
 
   const r = await backendFetch(
-    `/api/categories?q=${encodeURIComponent(q ?? "")}&page=${encodeURIComponent(page ?? "1")}`,
+    `/api/category?q=${encodeURIComponent(q ?? "")}&page=${encodeURIComponent(page ?? "1")}`,
     {
       headers: access ? { Authorization: `Bearer ${access}` } : {},
     },
@@ -37,12 +37,17 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
-  const r = await backendFetch("/api/categories", {
+  const r = await backendFetch("/api/category", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${access}`,
     },
-    body: body,
+    body: JSON.stringify({
+      name: body.name,
+      code: body.code,
+      description: body.description,
+      status: body.status,
+    }),
   });
 
   if (!r.ok) {

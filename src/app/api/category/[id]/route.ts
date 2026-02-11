@@ -13,13 +13,12 @@ export async function GET(_: Request, { params }: Ctx) {
   const access = jar.get(ACCESS_COOKIE)?.value;
   if (!access) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
 
-  const r = await backendFetch(`/api/products/${encodeURIComponent(id)}`, {
+  const r = await backendFetch(`/api/category/${encodeURIComponent(id)}`, {
     headers: access ? { Authorization: `Bearer ${access}` } : {},
   });
-  // console.log("check", r)
+
   if (!r.ok) {
     const err = await safeJson(r);
-    console.log("whyy", err);
     return NextResponse.json({ error: err?.error ?? "Not found" }, { status: r.status });
   }
   const data = await r.json();
@@ -34,7 +33,7 @@ export async function PUT(req: Request, { params }: Ctx) {
   const access = jar.get(ACCESS_COOKIE)?.value;
   if (!access) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
 
-  const r = await backendFetch(`/api/products/${encodeURIComponent(id)}`, {
+  const r = await backendFetch(`/api/category/${encodeURIComponent(id)}`, {
     method: "PUT",
     headers: { Authorization: `Bearer ${access}` },
     body: JSON.stringify(body),
@@ -58,7 +57,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const access = jar.get(ACCESS_COOKIE)?.value;
   if (!access) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
 
-  const r = await backendFetch(`/api/products/${encodeURIComponent(id)}`, {
+  const r = await backendFetch(`/api/category/${encodeURIComponent(id)}`, {
     method: "PATCH",
     headers: { Authorization: `Bearer ${access}` },
     body: JSON.stringify(body),
@@ -80,7 +79,7 @@ export async function DELETE(_: Request, { params }: Ctx) {
   const access = jar.get(ACCESS_COOKIE)?.value;
   if (!access) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
 
-  const r = await backendFetch(`/api/products/${encodeURIComponent(id)}`, {
+  const r = await backendFetch(`/api/category/${encodeURIComponent(id)}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${access}` },
   });

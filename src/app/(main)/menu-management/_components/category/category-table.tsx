@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Pencil, Trash } from "lucide-react";
 import { toast } from "sonner";
@@ -14,23 +14,20 @@ import { CategoryModal } from "./category-dialog";
 type Category = {
   id: number;
   name: string;
+  code: string;
+  description: string;
+  sortOrder: number;
+  status: string;
   totalMenu: number;
 };
 
-const category: Category[] = [
-  { id: 1, name: "Main Course", totalMenu: 5 },
-  { id: 2, name: "Starters", totalMenu: 2 },
-  { id: 3, name: "Desserts", totalMenu: 4 },
-  { id: 4, name: "Appetizers", totalMenu: 1 },
-  { id: 5, name: "Beverages", totalMenu: 2 },
-  { id: 6, name: "Sides", totalMenu: 1 },
-];
-
 export function CategoryTable() {
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
-  const [categories, setCategories] = useState<Category[]>(category);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [open, setOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | undefined>();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleDelete = async (id: number) => {
     const previousCategories = categories;
@@ -40,9 +37,13 @@ export function CategoryTable() {
     setIsDeleting(id);
 
     try {
-      // SIMULASI API
-      await new Promise((res) => setTimeout(res, 800));
-      // await api.delete(`/menus/${id}`)
+      const res = await fetch(`/api/category/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        throw new Error("Delete failed");
+      }
 
       toast.success("Categories deleted");
     } catch (error) {
@@ -55,6 +56,45 @@ export function CategoryTable() {
       setIsDeleting(null);
     }
   };
+
+  const fetchCategories = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/category", { method: "GET" });
+
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        setError(j?.error ?? "Gagal ambil data category");
+        return;
+      }
+
+      const j = await res.json();
+
+      const rawItems = j.data.data;
+
+      const items: Category[] = rawItems.map((x: any) => ({
+        id: Number(x.id),
+        name: x.name,
+        code: x.code,
+        description: x.description,
+        status: x.status,
+        totalMenu: x.product_count,
+      }));
+
+      setCategories(items);
+    } catch (e: any) {
+      setError(e?.message ?? "Network error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -68,7 +108,7 @@ export function CategoryTable() {
         >
           + Add Category
         </Button>
-        <CategoryModal open={open} onOpenChange={setOpen} category={selectedCategory} />
+        <CategoryModal open={open} onOpenChange={setOpen} category={selectedCategory} onSuccess={fetchCategories} />
       </div>
 
       {/* Table */}

@@ -43,6 +43,7 @@ export function MenuImage({
                 alt={alt}
                 fill
                 className="object-cover"
+            // unoptimized
             />
         </div>
     )

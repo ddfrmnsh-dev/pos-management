@@ -2,267 +2,309 @@
 
 import { useEffect, useState } from "react";
 
-import { useRouter, useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
-import { ArrowLeft, ImagesIcon, Save, Trash, X } from "lucide-react";
-import { useForm, useWatch } from "react-hook-form";
-import { toast } from "sonner";
+import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { MenuImage } from "@/components/ui/menu-image";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { normalizeProduct } from "@/lib/normalize-product";
 
-import { DeleteConfirmDialog } from "../../../_components/sidebar/dialog-confirm-delete";
+import ProductVariantSection from "../../../_components/product-varian";
 
-type MenuForm = {
+type Category = { id: number; name: string };
+
+type VariantPriceMode = "price" | "adjustment";
+
+type VariantOption = {
+  id: string;
   name: string;
   price: number;
-  description: string;
-  seasonal: boolean;
-  category: string;
-  status: "active" | "inactive";
-  availability: "all" | "selected" | "none";
+};
+
+type VariantGroup = {
+  id: string;
+  name: string;
+  isRequired: boolean;
+  priceMode: VariantPriceMode;
+  options: VariantOption[];
+};
+
+type VariantsDraft = {
+  enabled: boolean;
+  groups: VariantGroup[];
 };
 
 export default function EditMenuPage() {
   const router = useRouter();
-  const params = useParams<{ id: string }>();
+  const params = useParams();
+  const id = params.id;
 
+  const [product, setProduct] = useState<any>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  // const [groups, setGroups] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const [variants, setVariants] = useState<VariantsDraft>({
+    enabled: false,
+    groups: [],
+  });
 
   const form = useForm({
     defaultValues: {
       name: "",
       price: 0,
       description: "",
-      seasonal: false,
-      category: "main-course",
+      category: "",
       status: "active",
-      availability: "none",
+      seasonal: false,
     },
   });
 
-  // 🔹 Fetch existing menu
+  // ================= FETCH PRODUCT =================
   useEffect(() => {
-    async function fetchMenu() {
-      try {
-        // SIMULASI API
-        await new Promise((r) => setTimeout(r, 500));
+    async function fetchProduct() {
+      const res = await fetch(`/api/products/${id}`);
+      const j = await res.json();
+      const normalized = normalizeProduct(j.data);
 
-        form.reset({
-          name: "Classic Burger",
-          price: 12999,
-          description: "Juicy beef patty with fresh lettuce",
-          seasonal: true,
-          category: "main-course",
-          status: "inactive",
-          availability: "none",
-        });
-      } catch {
-        toast.error("Failed to load menu");
-      } finally {
-        setLoading(false);
+      setProduct(normalized);
+      // setGroups(normalized.groups);
+
+      form.reset({
+        name: normalized.name,
+        price: normalized.price,
+        description: normalized.description,
+        category: normalized.category.id ? String(normalized.category.id) : "",
+        status: normalized.status,
+        seasonal: normalized.seasonal ?? false,
+      });
+
+      if (normalized.image_url) {
+        setImagePreview(
+          normalized.image_url.startsWith("http")
+            ? normalized.image_url
+            : `${process.env.NEXT_PUBLIC_BACKEND_URL}${normalized.image_url}`,
+        );
       }
+
+      setVariants({
+        enabled: Array.isArray(normalized.groups) && normalized.groups.length > 0,
+        groups: normalized.groups ?? [],
+      });
     }
 
-    fetchMenu();
-  }, [form]);
+    fetchProduct();
+  }, [id]);
 
+  // ================= FETCH CATEGORIES =================
+  useEffect(() => {
+    async function fetchCategories() {
+      const res = await fetch("/api/category");
+      const j = await res.json();
+      setCategories(j.data.data);
+    }
+    fetchCategories();
+  }, []);
+
+  // const hasVariant = Array.isArray(groups) && groups.length > 0;
+  const hasVariant = variants.enabled;
+
+  // ================= SUBMIT =================
   const onSubmit = async (data: any) => {
-    try {
-      await new Promise((r) => setTimeout(r, 800));
-      toast.success("Menu updated");
-      router.back();
-    } catch {
-      toast.error("Update failed");
+    const fd = new FormData();
+    fd.append("name", data.name);
+    fd.append("price", String(data.price));
+    fd.append("description", data.description);
+    if (data.category) fd.append("category_id", data.category);
+    fd.append("status", data.status);
+    fd.append("groups", JSON.stringify(variants.enabled ? variants.groups : []));
+
+    // ✅ only upload new image
+    if (imageFile) {
+      fd.append("image", imageFile);
     }
+
+    console.log("UPDATE PAYLOAD", data);
+
+    await fetch(`/api/products/${id}`, {
+      method: "PUT",
+      body: fd,
+    });
+
+    router.push("/menu-management/menu");
   };
 
-  const seasonal = useWatch({
-    control: form.control,
-    name: "seasonal",
-  });
+  // if (!product) return <p>Loading...</p>;
+  // useEffect(() => {
+  //   if (!product) return;
 
-  if (loading) {
-    return (
-      <div className="flex h-[70vh] items-center justify-center">
-        <Spinner className="h-10 w-10" />
-      </div>
-    );
-  }
+  //   if (product.image_url) {
+  //     setImagePreview(product.image_url);
+  //   }
+
+  //   setVariants({
+  //     enabled: Array.isArray(product.groups) && product.groups.length > 0,
+  //     groups: product.groups ?? [],
+  //   });
+  // }, [product]);
+
+  const handleImageChange = (file: File | null) => {
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
 
   return (
     <Form {...form}>
-      <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ArrowLeft className="text-muted-foreground h-4 w-4 cursor-pointer" onClick={() => router.back()} />
-            <div>
-              <h1 className="text-xl font-semibold">{form.watch("name")}</h1>
-              <p className="text-muted-foreground text-sm">Update/view menu item details</p>
-            </div>
-          </div>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {/* ================= HEADER ================= */}
+        <div>
+          <h1 className="text-xl font-semibold">Edit Menu Item</h1>
+          <p className="text-muted-foreground text-sm">Update existing menu</p>
         </div>
 
-        {/* Main Grid */}
+        {/* ================= GRID ================= */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          {/* Left */}
+          {/* LEFT */}
           <div className="space-y-4 md:col-span-3">
-            <Card>
-              <CardContent className="space-y-4 pt-6">
-                {/* Name & Price */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <Label>Name</Label>
-                    <Input {...form.register("name")} />
-                  </div>
+            {/* NAME */}
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <Input {...field} />
+                </FormItem>
+              )}
+            />
 
-                  <div className="space-y-1">
-                    <Label>Base Price</Label>
-                    <div className="relative">
-                      <span className="text-muted-foreground absolute top-1/2 left-3 -translate-y-1/2 text-sm">Rp</span>
+            {/* PRICE */}
+            <FormField
+              control={form.control}
+              name="price"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Base Price</FormLabel>
+                  <Input type="number" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
+                </FormItem>
+              )}
+            />
 
-                      <Input
-                        type="number"
-                        min={0}
-                        step={100}
-                        className="pl-10"
-                        {...form.register("price", {
-                          valueAsNumber: true,
-                          min: 0,
-                        })}
-                        onKeyDown={(e) => {
-                          if (e.key === "-" || e.key === "e") {
-                            e.preventDefault();
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
+            {/* DESC */}
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <Textarea {...field} />
+                </FormItem>
+              )}
+            />
 
-                {/* Description */}
-                <div className="space-y-1">
-                  <Label>Description</Label>
-                  <Textarea {...form.register("description")} />
-                </div>
-                {/* <CardContent className="pt-6"> */}
-                <Label>Image</Label>
-                <label className="hover:bg-muted mt-2 flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed p-6 text-center">
-                  <ImagesIcon className="text-muted-foreground h-5 w-5" />
-                  <span className="text-muted-foreground text-sm">Click to upload image</span>
-                  <input type="file" accept="image/*" className="hidden" />
-                </label>
-                {/* </CardContent> */}
+            {/* VARIANT SECTION (ONLY IF GROUPS EXIST) */}
+            {/* {hasVariant && (
+              // <ProductVariantSection value={groups} onChange={setGroups} />
+            )} */}
+            <ProductVariantSection value={variants} onChange={setVariants} />
+
+            <div className="space-y-2">
+              <FormLabel>Image</FormLabel>
+
+              {imagePreview && <img src={imagePreview} className="w-40 rounded border" />}
+
+              <Input type="file" accept="image/*" onChange={(e) => handleImageChange(e.target.files?.[0] ?? null)} />
+
+              {imagePreview && (
+                <Button type="button" variant="secondary" onClick={handleRemoveImage}>
+                  Remove Image
+                </Button>
+              )}
+            </div>
+
+            {/* SEASONAL */}
+            <FormField
+              control={form.control}
+              name="seasonal"
+              render={({ field }) => (
                 <div className="flex items-center gap-2">
-                  <Checkbox checked={seasonal} onCheckedChange={(v) => form.setValue("seasonal", Boolean(v))} />
-                  <Label>Seasonal Item</Label>
+                  <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                  <span>Seasonal Item</span>
                 </div>
-              </CardContent>
-            </Card>
+              )}
+            />
           </div>
 
-          {/* Right */}
+          {/* RIGHT */}
           <div className="space-y-4">
-            <Card>
-              <CardContent className="space-y-4 pt-6">
-                {/* Category */}
-                <FormField
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Category</FormLabel>
+            {/* CATEGORY */}
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Category" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {categories.map((c) => (
+                        <SelectItem key={c.id} value={String(c.id)}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              )}
+            />
 
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                        </FormControl>
-
-                        <SelectContent>
-                          <SelectItem value="main-course">Main Course</SelectItem>
-                          <SelectItem value="dessert">Dessert</SelectItem>
-                          <SelectItem value="drink">Drink</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormItem>
-                  )}
-                />
-
-                {/* Status */}
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <div className="space-y-2">
-                      <Label>Status</Label>
-
-                      <RadioGroup value={field.value} onValueChange={field.onChange}>
-                        <div className="flex items-center gap-2">
-                          <RadioGroupItem value="active" />
-                          <Label>Active</Label>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <RadioGroupItem value="inactive" />
-                          <Label>Inactive</Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
-                  )}
-                />
-
-                {/* Availability */}
-                <div className="space-y-2">
-                  <Label>Availability</Label>
-                  <RadioGroup defaultValue="all" onValueChange={(v) => form.setValue("availability", v)}>
+            {/* STATUS */}
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status</FormLabel>
+                  <RadioGroup value={field.value} onValueChange={field.onChange}>
                     <div className="flex items-center gap-2">
-                      <RadioGroupItem value="all" />
-                      <Label>All Branches</Label>
+                      <RadioGroupItem value="active" />
+                      Active
                     </div>
                     <div className="flex items-center gap-2">
-                      <RadioGroupItem value="selected" />
-                      <Label>Selected Branches</Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="none" />
-                      <Label>None</Label>
+                      <RadioGroupItem value="inactive" />
+                      Inactive
                     </div>
                   </RadioGroup>
-                </div>
-              </CardContent>
-            </Card>
+                </FormItem>
+              )}
+            />
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex justify-between pt-6">
-          <div className="flex gap-3">
-            <Button type="submit">
-              <Save className="mr-2 h-4 w-4" />
-              Save Changes
-            </Button>
-            <Button type="button" variant="secondary" onClick={() => router.back()}>
-              <X className="mr-2 h-4 w-4" />
-              Cancel
-            </Button>
-          </div>
-          <DeleteConfirmDialog title="Delete this menu?" onConfirm={() => toast.success("Deleted")}>
-            <Button variant="destructive">
-              <Trash className="mr-2 h-4 w-4" />
-              Delete Item
-            </Button>
-          </DeleteConfirmDialog>
+        {/* ACTIONS */}
+        <div className="flex gap-4">
+          <Button type="submit">Update Menu</Button>
+          <Button type="button" variant="secondary" onClick={() => router.back()}>
+            Cancel
+          </Button>
         </div>
       </form>
     </Form>

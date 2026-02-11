@@ -1,13 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "6c9017586fdc.ngrok-free.app",
-        pathname: "/uploads/**",
-      },
-    ],
+    // remotePatterns: [
+    //   {
+    //     protocol: "https",
+    //     hostname: "c6d7-103-156-118-15.ngrok-free.app",
+    //     pathname: "/uploads/**",
+    //   },
+    // ],
+    remotePatterns: [new URL('https://c6d7-103-156-118-15.ngrok-free.app/uploads/**')],
   },
   reactCompiler: true,
   compiler: {
@@ -23,5 +24,7 @@ const nextConfig = {
     ];
   },
 }
+
+console.log("NEXT CONFIG LOADED");
 
 export default nextConfig

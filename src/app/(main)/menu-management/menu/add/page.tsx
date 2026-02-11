@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useRouter } from "next/navigation";
 
@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 
 import { menuSchema } from "../../_components/menu-form";
+import ProductVariantSection from "../../_components/product-varian";
 
 type MenuFormValues = {
   name: string;
@@ -31,11 +32,75 @@ type MenuFormValues = {
   seasonal: boolean;
 };
 
+type Category = {
+  id: number;
+  name: string;
+};
+
+type VariantPriceMode = "price" | "adjustment";
+
+type VariantOption = {
+  id: string;
+  name: string;
+  price: number;
+};
+
+type VariantGroup = {
+  id: string;
+  name: string;
+  isRequired: boolean;
+  priceMode: VariantPriceMode;
+  options: VariantOption[];
+};
+
+type VariantsDraft = {
+  enabled: boolean;
+  groups: VariantGroup[];
+};
+
 export default function AddMenuPage() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const [variantsDraft, setVariantsDraft] = useState<VariantsDraft>({
+    enabled: false,
+    groups: [
+      {
+        id: "g_size",
+        name: "Size",
+        isRequired: true,
+        priceMode: "price",
+        options: [
+          { id: "o_small", name: "Small", price: 18000 },
+          { id: "o_large", name: "Large", price: 22000 },
+        ],
+      },
+      {
+        id: "g_temp",
+        name: "Temperature",
+        isRequired: true,
+        priceMode: "adjustment",
+        options: [
+          { id: "o_hot", name: "Hot", price: 0 },
+          { id: "o_ice", name: "Ice", price: 0 },
+        ],
+      },
+    ],
+  });
+
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const res = await fetch("/api/category");
+      const j = await res.json();
+      setCategories(j.data.data); // sesuaikan struktur API kamu
+    };
+
+    fetchCategories();
+  }, []);
 
   const form = useForm<MenuFormValues>({
     resolver: zodResolver(menuSchema),
@@ -43,7 +108,7 @@ export default function AddMenuPage() {
       name: "",
       price: 0,
       description: "",
-      category: "main-course",
+      category: undefined,
       status: "active",
       availability: "all",
       seasonal: false,
@@ -60,11 +125,41 @@ export default function AddMenuPage() {
       fd.append("base_price", String(values.price));
       fd.append("cost_price", String(values.price));
       fd.append("description", values.description);
-      fd.append("category_id", "1");
+      fd.append("category_id", values.category);
       fd.append("status", values.status);
       fd.append("availability", values.availability);
       fd.append("is_seasonal", values.seasonal ? "true" : "false");
       fd.append("is_taxable", values.seasonal ? "true" : "false");
+
+      // ✅ variants payload (kirim sekaligus dalam 1 request)
+      fd.append("has_variants", variantsDraft.enabled ? "true" : "false");
+
+      if (variantsDraft.enabled) {
+        const invalidGroup = variantsDraft.groups.some((g) => !g.name.trim());
+        if (invalidGroup) {
+          toast.error("Variant group name is required");
+          setSubmitting(false);
+          return;
+        }
+
+        const payload = {
+          groups: variantsDraft.groups
+            .map((g) => ({
+              name: g.name.trim(),
+              required: g.isRequired,
+              price_mode: g.priceMode, // "price" | "adjustment"
+              options: g.options
+                .map((o) => ({
+                  name: o.name.trim(),
+                  price: Number(o.price) || 0,
+                }))
+                .filter((o) => o.name.length > 0),
+            }))
+            .filter((g) => g.name.length > 0 && g.options.length > 0),
+        };
+
+        fd.append("variants", JSON.stringify(payload));
+      }
 
       if (imageFile) fd.append("image", imageFile);
 
@@ -221,6 +316,8 @@ export default function AddMenuPage() {
                   )}
                 </div>
 
+                <ProductVariantSection value={variantsDraft} onChange={setVariantsDraft} />
+
                 {/* Seasonal */}
                 <FormField
                   control={form.control}
@@ -244,25 +341,33 @@ export default function AddMenuPage() {
                 <FormField
                   control={form.control}
                   name="category"
-                  render={({ field, fieldState }) => (
+                  render={({ field }) => (
                     <FormItem>
                       <FormLabel>Category</FormLabel>
+
                       <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select Category" />
                           </SelectTrigger>
                         </FormControl>
+
                         <SelectContent>
-                          <SelectItem value="main-course">Main Course</SelectItem>
-                          <SelectItem value="starters">Starters</SelectItem>
-                          <SelectItem value="desserts">Desserts</SelectItem>
-                          <SelectItem value="appetizers">Appetizers</SelectItem>
-                          <SelectItem value="beverages">Beverages</SelectItem>
-                          <SelectItem value="sides">Sides</SelectItem>
+                          {categories.length === 0 && (
+                            <SelectItem value="loading" disabled>
+                              Loading...
+                            </SelectItem>
+                          )}
+                          <SelectItem value="placeholder" disabled>
+                            Select Category
+                          </SelectItem>
+                          {categories.map((c) => (
+                            <SelectItem key={c.id} value={String(c.id)}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
-                      {fieldState.error && <p className="text-sm text-red-500">{fieldState.error.message}</p>}
                     </FormItem>
                   )}
                 />
